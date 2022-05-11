@@ -5,6 +5,7 @@ const app = express()
 const port = 3000
 const api = new opensea.OpenSeaAPI({ networkName: opensea.Network.Rinkeby })
 const rinkebyContractAddress = '0x88b48f654c30e99bc2e4a1559b4dcf1ad93fa656'
+const collectionId = 'hotel-x'
 
 const preparedCoupons = {}
 const redeemedCoupons = {}
@@ -23,9 +24,11 @@ app.get('/items', async (req, res) => {
       order_direction: 'desc',
       offset: '0',
       limit: '20',
-      collection: 'hotel-x'
+      collection: collectionId
     })
 
+    // const hexTokenId = '0x' + BigInt(assetsRes.assets[0].tokenId).toString(16)
+    // https://testnets-api.opensea.io/api/v1/metadata/0x88B48F654c30e99bc2e4A1559b4Dcf1aD93FA656/{hexTokenId}
     res.send(assetsRes.assets)
   } else {
     res.send([])
