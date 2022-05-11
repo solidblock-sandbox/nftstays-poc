@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>NFT Stays</title>
+    <link rel="stylesheet" href="css/spectre.min.css">
+    <link rel="stylesheet" href="css/spectre-exp.min.css">
+    <link rel="stylesheet" href="css/spectre-icons.min.css">
+  </head>
+
+  <body>
+    <div class="container mt-2">
+        <div class="columns">
+            <div class="column col-8 col-mx-auto">
+            <div class="empty">
+                <div class="empty-icon">
+                    <i class="icon icon-search"></i>
+                </div>
+                <p class="empty-subtitle">Refer to the <b>Developer Console</b> to view events</p>
+                <div class="empty-action">
+                    <div class="container">
+                        <button class="my-2 p-centered btn btn-primary" id="connect">Connect MetaMask</button>
+                        <button class="my-2 p-centered btn btn-primary" id="get-items">Get Items</button>
+                        <div class="my-2 input-group">
+                            <input type="text" class="form-input" id="token-id" placeholder="Token Id">
+                            <button class="btn btn-primary input-group-btn" id="uri">URI</button>
+                            <button class="btn btn-success input-group-btn" id="balance">Balance</button>
+                            <button class="btn btn-error input-group-btn" id="burn">Burn</button>
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
+    </div>
+  </body>
+
+  <script src="web3.min.js"></script>
+  <script src="abi.js"></script>
+  <script src="index.js"></script>
+</html>
