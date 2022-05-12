@@ -1,13 +1,11 @@
 const express = require('express')
-const opensea = require('opensea-js')
 const path = require('path')
+const { OpenSeaCollection, Network } = require('./lib/collection.js')
+
 const app = express()
 const port = 3000
-const api = new opensea.OpenSeaAPI({ networkName: opensea.Network.Rinkeby })
-const rinkebyContractAddress = '0x88b48f654c30e99bc2e4a1559b4dcf1ad93fa656'
-const collectionId = 'hotel-x'
+const collection = new OpenSeaCollection('0x2953399124f0cbb46d2cbacd8a89cf0599974963', Network.Matic)
 
-const preparedCoupons = {}
 const redeemedCoupons = {}
 
 app.use(express.static('public'))
@@ -19,17 +17,8 @@ app.get('/', (req, res) => {
 app.get('/items', async (req, res) => {
   const account = req.query.account
   if (account && account !== 'null') {
-    const assetsRes = await api.getAssets({
-      owner: account,
-      order_direction: 'desc',
-      offset: '0',
-      limit: '20',
-      collection: collectionId
-    })
-
-    // const hexTokenId = '0x' + BigInt(assetsRes.assets[0].tokenId).toString(16)
-    // https://testnets-api.opensea.io/api/v1/metadata/0x88B48F654c30e99bc2e4A1559b4Dcf1aD93FA656/{hexTokenId}
-    res.send(assetsRes.assets)
+    const items = await collection.enumerateTokens(account)
+    res.send(items)
   } else {
     res.send([])
   }
@@ -38,13 +27,8 @@ app.get('/items', async (req, res) => {
 app.get('/prepare-coupon', async (req, res) => {
   const tokenId = req.query.tokenId
   if (tokenId && tokenId !== 'null') {
-    const assetRes = await api.getAsset({
-      tokenAddress: rinkebyContractAddress,
-      tokenId
-    })
-
-    preparedCoupons[tokenId] = assetRes
-    console.log('Prepared:', tokenId, '=>', assetRes.name)
+    await collection.getTokenMetadata(tokenId)
+    console.log('Prepared:', tokenId)
     res.send({ success: true })
   } else {
     res.send({ success: false })
@@ -75,12 +59,6 @@ app.get('/redeem-coupon', async (req, res) => {
     })
   }
 
-  const prepared = preparedCoupons[tokenId]
-  if (!prepared) {
-    // try to request data from the OpenSea API, probably they are cached for some time
-    console.warn('storing redemption data without coupon information')
-  }
-
   // WARNIGN: There should be a transaction hash check for authenticity.
   // Implementation temporarily delayed to meet project deadline
 
@@ -88,7 +66,6 @@ app.get('/redeem-coupon', async (req, res) => {
   redeemedCoupons[account] = redeemedCoupons[account] || []
   redeemedCoupons[account].push({
     tokenId,
-    type: prepared ? prepared.name : null,
     txHash,
     coupon
   })
@@ -98,6 +75,10 @@ app.get('/redeem-coupon', async (req, res) => {
   res.send({ coupon })
 })
 
-app.listen(port, () => {
+app.listen(port, async () => {
+  console.log('Initialization...')
+  await collection.init()
+  await collection.registerTokenId('84466660791578197043326924592760112328543781438107443754154382889795478094224')
+  await collection.registerTokenId('84466660791578197043326924592760112328543781438107443754154382890894989721700')
   console.log(`Listening on port ${port}`)
 })

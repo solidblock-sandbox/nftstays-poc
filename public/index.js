@@ -17,8 +17,8 @@ let account = null
 const isInstalled = isMetaMaskInstalled()
 let web3 = isInstalled && new Web3(window.ethereum)
 const openseaContractABI = ABI
-const rinkebyContractAddress = '0x88b48f654c30e99bc2e4a1559b4dcf1ad93fa656'
-const openseaContract = new web3.eth.Contract(openseaContractABI, rinkebyContractAddress)
+const openseaContractAddress = '0x2953399124f0cbb46d2cbacd8a89cf0599974963'
+const openseaContract = new web3.eth.Contract(openseaContractABI, openseaContractAddress)
 
 const getTokenId = () => {
   const decTokenId = document.getElementById('token-id').value
