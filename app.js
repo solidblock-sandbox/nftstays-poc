@@ -59,8 +59,24 @@ app.get('/redeem-coupon', async (req, res) => {
     })
   }
 
-  // WARNIGN: There should be a transaction hash check for authenticity.
-  // Implementation temporarily delayed to meet project deadline
+  try {
+    // we need to make sure that this transaction has not been submitted before
+    const found = (redeemedCoupons[account] || [])
+      .find(entry => entry.txHash.toLowerCase() === txHash.toLowerCase())
+    if (found) {
+      throw new Error('tx hash already submitted')
+    }
+
+    await collection.verifyTxHash(account, tokenId, txHash)
+  } catch (error) {
+    // log the error, but do not return it in response,
+    // so as not to help the attacker predict the transaction verification algorithm
+    console.warn(error.message, account, tokenId, txHash)
+    return res.send({
+      success: false,
+      error: 'tx hash verification failed'
+    })
+  }
 
   const coupon = Math.floor(Math.random() * 1000000000).toString()
   redeemedCoupons[account] = redeemedCoupons[account] || []
