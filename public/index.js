@@ -74,6 +74,18 @@ const switchNetwork = async () => {
   return 0
 }
 
+const signMessage = async (from, msg) => {
+  try {
+    return window.ethereum.request({
+      method: 'personal_sign',
+      params: [msg, from]
+    })
+  } catch (err) {
+    console.error(err)
+  }
+  return null
+}
+
 let account = null
 const isInstalled = isMetaMaskInstalled()
 const web3 = isInstalled && new Web3(window.ethereum)
@@ -98,6 +110,12 @@ document.getElementById('switch').addEventListener('click', async () => {
 
 document.getElementById('get-items').addEventListener('click', async () => {
   const res = await fetch('items?' + new URLSearchParams({ account }))
+  const data = await res.json()
+  console.log(data)
+})
+
+document.getElementById('get-redeemed-items').addEventListener('click', async () => {
+  const res = await fetch('redeemed-items?' + new URLSearchParams({ account }))
   const data = await res.json()
   console.log(data)
 })
@@ -144,4 +162,23 @@ document.getElementById('burn').addEventListener('click', async () => {
   const redeemRes = await fetch('redeem-coupon?' + new URLSearchParams({ tokenId: decTokenId, account, txHash }))
   const redeemData = await redeemRes.json()
   console.log(redeemData)
+})
+
+document.getElementById('recover').addEventListener('click', async () => {
+  const txHash = document.getElementById('tx-hash').value
+
+  const authRes = await fetch('auth-recover-coupon?' + new URLSearchParams({ account, txHash }))
+  const authData = await authRes.json()
+  console.log(authData)
+
+  if (authData.error) {
+    return
+  }
+
+  const token = authData.token
+  const signature = await signMessage(account, authData.msg)
+
+  const recoverRes = await fetch('recover-coupon?' + new URLSearchParams({ token, signature }))
+  const recoverData = await recoverRes.json()
+  console.log(recoverData)
 })
