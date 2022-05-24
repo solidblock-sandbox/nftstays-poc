@@ -5,7 +5,12 @@ const { Authentication } = require('./lib/authentication.js')
 
 const app = express()
 const port = 3000
-const collection = new OpenSeaCollection('0x2953399124f0cbb46d2cbacd8a89cf0599974963', Network.Matic)
+const collections = {
+  polygon: new OpenSeaCollection('0x2953399124f0cbb46d2cbacd8a89cf0599974963', Network.PolygonMainnet),
+  ethereum: new OpenSeaCollection('0x495f947276749ce646f68ac8c248420045cb7b5e', Network.InfuraEthereumMainnet('cdbd01e3d...........26cc3728e')),
+  rinkeby: new OpenSeaCollection('0x88b48f654c30e99bc2e4a1559b4dcf1ad93fa656', Network.InfuraRinkebyTestnet('cdbd01e3d...........26cc3728e'))
+}
+
 const authentication = new Authentication('Authenticate your account by signing the one-time generated token.')
 
 const redeemedCoupons = {}
@@ -21,10 +26,11 @@ app.get('/', (req, res) => {
 })
 
 app.get('/items', async (req, res) => {
+  const network = req.query.network || 'polygon'
   let account = req.query.account
   if (account && account !== 'null') {
     account = account.toLowerCase()
-    const items = await collection.enumerateTokens(account)
+    const items = await collections[network].enumerateTokens(account)
     res.send(items)
   } else {
     res.send([])
@@ -32,6 +38,7 @@ app.get('/items', async (req, res) => {
 })
 
 app.get('/redeemed-items', async (req, res) => {
+  const network = req.query.network || 'polygon'
   let account = req.query.account
   if (account && account !== 'null') {
     account = account.toLowerCase()
@@ -42,7 +49,7 @@ app.get('/redeemed-items', async (req, res) => {
       items.push({
         tokenId: coupon.tokenId,
         txHash: coupon.txHash,
-        metadata: await collection.getTokenMetadata(coupon.tokenId)
+        metadata: await collections[network].getTokenMetadata(coupon.tokenId)
       })
     }
     res.send(items)
@@ -52,9 +59,10 @@ app.get('/redeemed-items', async (req, res) => {
 })
 
 app.get('/prepare-coupon', async (req, res) => {
+  const network = req.query.network || 'polygon'
   const tokenId = req.query.tokenId
   if (tokenId && tokenId !== 'null') {
-    await collection.getTokenMetadata(tokenId)
+    await collections[network].getTokenMetadata(tokenId)
     console.log('Prepared:', tokenId)
     res.send({ success: true })
   } else {
@@ -63,6 +71,7 @@ app.get('/prepare-coupon', async (req, res) => {
 })
 
 app.get('/redeem-coupon', async (req, res) => {
+  const network = req.query.network || 'polygon'
   const tokenId = req.query.tokenId
   const txHash = req.query.txHash
   let account = req.query.account
@@ -95,7 +104,7 @@ app.get('/redeem-coupon', async (req, res) => {
       throw new Error('tx hash already submitted')
     }
 
-    await collection.verifyTxHash(account, tokenId, txHash)
+    await collections[network].verifyTxHash(account, tokenId, txHash)
   } catch (error) {
     // log the error, but do not return it in response,
     // so as not to help the attacker predict the transaction verification algorithm
@@ -109,6 +118,7 @@ app.get('/redeem-coupon', async (req, res) => {
   const coupon = Math.floor(Math.random() * 1000000000).toString()
   redeemedCoupons[account] = redeemedCoupons[account] || []
   redeemedCoupons[account].push({
+    network,
     tokenId,
     txHash,
     coupon
@@ -191,8 +201,22 @@ app.get('/recover-coupon', async (req, res) => {
 
 app.listen(port, async () => {
   console.log('Initialization...')
-  await collection.init()
-  await collection.registerTokenId('84466660791578197043326924592760112328543781438107443754154382889795478094224')
-  await collection.registerTokenId('84466660791578197043326924592760112328543781438107443754154382890894989721700')
+  await collections.polygon.init()
+  await collections.polygon.registerTokenId('84466660791578197043326924592760112328543781438107443754154382889795478094224')
+  await collections.polygon.registerTokenId('84466660791578197043326924592760112328543781438107443754154382890894989721700')
+
+  await collections.ethereum.init()
+  await collections.ethereum.registerTokenId('74066301794831466583883104733052380198809370620353126000416070128809445163108')
+
+  await collections.rinkeby.init()
+  await collections.rinkeby.registerTokenId('84466660791578197043326924592760112328543781438107443754154382895293036232705')
+  await sleep(500) // to prevent error response 'Request was throttled. Expected available in 1 second.'
+  await collections.rinkeby.registerTokenId('84466660791578197043326924592760112328543781438107443754154382894193524604929')
+  await sleep(500)
+  await collections.rinkeby.registerTokenId('84466660791578197043326924592760112328543781438107443754154382896392547861480')
   console.log(`Listening on port ${port}`)
 })
+
+async function sleep (ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}

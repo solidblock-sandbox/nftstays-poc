@@ -18,6 +18,20 @@ const getNetworkName = (id) => {
   return networks[Number(id)] || 'Unknown Network'
 }
 
+const getNetworkCode = (id) => {
+  const networks = {
+    1: 'ethereum',
+    3: 'ropsten',
+    4: 'rinkeby',
+    5: 'goerli',
+    42: 'kovan',
+    137: 'polygon',
+    80001: 'mumbai',
+    31337: 'hardhat'
+  }
+  return networks[Number(id)] || 'unknown'
+}
+
 const connectMetaMask = async (installed) => {
   if (installed) {
     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
@@ -88,10 +102,12 @@ const signMessage = async (from, msg) => {
 
 let account = null
 const isInstalled = isMetaMaskInstalled()
-const web3 = isInstalled && new Web3(window.ethereum)
 const openseaContractABI = ABI
-const openseaContractAddress = '0x2953399124f0cbb46d2cbacd8a89cf0599974963'
-const openseaContract = new web3.eth.Contract(openseaContractABI, openseaContractAddress)
+const openseaContracts = {
+  polygon: () => new (new Web3(window.ethereum)).eth.Contract(openseaContractABI, '0x2953399124f0cbb46d2cbacd8a89cf0599974963'),
+  ethereum: () => new (new Web3(window.ethereum)).eth.Contract(openseaContractABI, '0x495f947276749ce646f68ac8c248420045cb7b5e'),
+  rinkeby: () => new (new Web3(window.ethereum)).eth.Contract(openseaContractABI, '0x88b48f654c30e99bc2e4a1559b4dcf1ad93fa656')
+}
 
 const getTokenId = () => {
   const decTokenId = document.getElementById('token-id').value
@@ -104,44 +120,49 @@ document.getElementById('connect').addEventListener('click', async () => {
 })
 
 document.getElementById('switch').addEventListener('click', async () => {
-  const chainId = await switchNetwork(isInstalled)
+  const chainId = await switchNetwork()
   console.log('Connected to', getNetworkName(chainId))
 })
 
 document.getElementById('get-items').addEventListener('click', async () => {
-  const res = await fetch('items?' + new URLSearchParams({ account }))
+  const network = getNetworkCode(await getChainID())
+  const res = await fetch('items?' + new URLSearchParams({ account, network }))
   const data = await res.json()
   console.log(data)
 })
 
 document.getElementById('get-redeemed-items').addEventListener('click', async () => {
-  const res = await fetch('redeemed-items?' + new URLSearchParams({ account }))
+  const network = getNetworkCode(await getChainID())
+  const res = await fetch('redeemed-items?' + new URLSearchParams({ account, network }))
   const data = await res.json()
   console.log(data)
 })
 
 document.getElementById('uri').addEventListener('click', async () => {
   const { hexTokenId } = getTokenId()
+  const network = getNetworkCode(await getChainID())
   // If a centralized storage is used for metadata, the results will always be the same:
   // https://testnets-api.opensea.io/api/v1/metadata/0x88B48F654c30e99bc2e4A1559b4Dcf1aD93FA656/0x{id}
-  console.log('URI:', await openseaContract.methods.uri(hexTokenId).call())
+  console.log('URI:', await openseaContracts[network]().methods.uri(hexTokenId).call())
 })
 
 document.getElementById('balance').addEventListener('click', async () => {
   const { hexTokenId } = getTokenId()
-  console.log('Balance:', await openseaContract.methods.balanceOf(account, hexTokenId).call())
+  const network = getNetworkCode(await getChainID())
+  console.log('Balance:', await openseaContracts[network]().methods.balanceOf(account, hexTokenId).call())
 })
 
 document.getElementById('burn').addEventListener('click', async () => {
   const { decTokenId, hexTokenId } = getTokenId()
+  const network = getNetworkCode(await getChainID())
 
   // it is better to use POST, GET method here to simplify the code
-  const preapreRes = await fetch('prepare-coupon?' + new URLSearchParams({ tokenId: decTokenId }))
+  const preapreRes = await fetch('prepare-coupon?' + new URLSearchParams({ tokenId: decTokenId, network }))
   const prepareData = await preapreRes.json()
   console.log(prepareData)
 
   const burn = (from, tokenId) => new Promise((resolve, reject) => {
-    openseaContract.methods.burn(from, tokenId, 1).send({ from })
+    openseaContracts[network]().methods.burn(from, tokenId, 1).send({ from })
       .on('transactionHash', hash => {
         console.log('Tx Hash:', hash)
       })
@@ -159,7 +180,7 @@ document.getElementById('burn').addEventListener('click', async () => {
   const txHash = await burn(account, hexTokenId)
 
   // it is better to use POST, GET method here to simplify the code
-  const redeemRes = await fetch('redeem-coupon?' + new URLSearchParams({ tokenId: decTokenId, account, txHash }))
+  const redeemRes = await fetch('redeem-coupon?' + new URLSearchParams({ tokenId: decTokenId, account, txHash, network }))
   const redeemData = await redeemRes.json()
   console.log(redeemData)
 })
