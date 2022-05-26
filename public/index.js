@@ -34,15 +34,19 @@ const getNetworkCode = (id) => {
 
 const connectMetaMask = async (installed) => {
   if (installed) {
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
+    const provider = window.ethereum.providers.find((provider) => provider.isMetaMask) // provider.isCoinbaseWallet
+    const accounts = await provider.request({ method: 'eth_requestAccounts' })
     console.log('Account Address:', accounts[0])
-    return accounts[0]
+    return {
+      provider,
+      account: accounts[0]
+    }
   }
   return null
 }
 
 const getChainID = async () => {
-  return window.ethereum.request({ method: 'eth_chainId' })
+  return provider.request({ method: 'eth_chainId' })
 }
 
 const switchNetwork = async () => {
@@ -52,7 +56,7 @@ const switchNetwork = async () => {
 
     if (chainId !== MaticNetworkId) {
       try {
-        await window.ethereum.request({
+        await provider.request({
           method: 'wallet_switchEthereumChain',
           params: [{ chainId: MaticNetworkId }]
         })
@@ -63,7 +67,7 @@ const switchNetwork = async () => {
           return 0
         }
 
-        await window.ethereum.request({
+        await provider.request({
           method: 'wallet_addEthereumChain',
           params: [
             {
@@ -90,7 +94,7 @@ const switchNetwork = async () => {
 
 const signMessage = async (from, msg) => {
   try {
-    return window.ethereum.request({
+    return provider.request({
       method: 'personal_sign',
       params: [msg, from]
     })
@@ -100,13 +104,14 @@ const signMessage = async (from, msg) => {
   return null
 }
 
+let provider = null
 let account = null
 const isInstalled = isMetaMaskInstalled()
 const openseaContractABI = ABI
 const openseaContracts = {
-  ethereum: () => new (new Web3(window.ethereum)).eth.Contract(openseaContractABI, '0x495f947276749ce646f68ac8c248420045cb7b5e'),
-  polygon: () => new (new Web3(window.ethereum)).eth.Contract(openseaContractABI, '0x2953399124f0cbb46d2cbacd8a89cf0599974963'),
-  rinkeby: () => new (new Web3(window.ethereum)).eth.Contract(openseaContractABI, '0x88b48f654c30e99bc2e4a1559b4dcf1ad93fa656')
+  ethereum: () => new (new Web3(provider)).eth.Contract(openseaContractABI, '0x495f947276749ce646f68ac8c248420045cb7b5e'),
+  polygon: () => new (new Web3(provider)).eth.Contract(openseaContractABI, '0x2953399124f0cbb46d2cbacd8a89cf0599974963'),
+  rinkeby: () => new (new Web3(provider)).eth.Contract(openseaContractABI, '0x88b48f654c30e99bc2e4a1559b4dcf1ad93fa656')
 }
 
 const openseaBurnFunctions = {
@@ -122,7 +127,9 @@ const getTokenId = () => {
 }
 
 document.getElementById('connect').addEventListener('click', async () => {
-  account = await connectMetaMask(isInstalled)
+  const connection = await connectMetaMask(isInstalled)
+  provider = connection.provider
+  account = connection.account
 })
 
 document.getElementById('switch').addEventListener('click', async () => {
