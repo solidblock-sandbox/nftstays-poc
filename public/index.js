@@ -104,9 +104,15 @@ let account = null
 const isInstalled = isMetaMaskInstalled()
 const openseaContractABI = ABI
 const openseaContracts = {
-  polygon: () => new (new Web3(window.ethereum)).eth.Contract(openseaContractABI, '0x2953399124f0cbb46d2cbacd8a89cf0599974963'),
   ethereum: () => new (new Web3(window.ethereum)).eth.Contract(openseaContractABI, '0x495f947276749ce646f68ac8c248420045cb7b5e'),
+  polygon: () => new (new Web3(window.ethereum)).eth.Contract(openseaContractABI, '0x2953399124f0cbb46d2cbacd8a89cf0599974963'),
   rinkeby: () => new (new Web3(window.ethereum)).eth.Contract(openseaContractABI, '0x88b48f654c30e99bc2e4a1559b4dcf1ad93fa656')
+}
+
+const openseaBurnFunctions = {
+  ethereum: (from, tokenId) => openseaContracts.ethereum().methods.safeTransferFrom(from, '0x0000000000000000000000000000000000000001', tokenId, 1, []),
+  polygon: (from, tokenId) => openseaContracts.polygon().methods.burn(from, tokenId, 1),
+  rinkeby: (from, tokenId) => openseaContracts.rinkeby().methods.burn(from, tokenId, 1)
 }
 
 const getTokenId = () => {
@@ -162,7 +168,7 @@ document.getElementById('burn').addEventListener('click', async () => {
   console.log(prepareData)
 
   const burn = (from, tokenId) => new Promise((resolve, reject) => {
-    openseaContracts[network]().methods.burn(from, tokenId, 1).send({ from })
+    openseaBurnFunctions[network](from, tokenId).send({ from })
       .on('transactionHash', hash => {
         console.log('Tx Hash:', hash)
       })
